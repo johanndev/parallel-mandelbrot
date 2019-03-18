@@ -6,7 +6,7 @@
 #include "coordinates.h"
 #include "rectangle.h"
 
-std::tuple<Coordinates<unsigned int>, Rect<float>, int, int> ParseCmdLine(int argc, char** argv)
+std::tuple<Coordinates<unsigned int>, Rect<float>, int, int, bool> ParseCmdLine(int argc, char** argv)
 {
 	TCLAP::CmdLine cmd("Parallel mandelbrot implementation by Johann Wimmer", ' ', "0.1", false);
 
@@ -23,6 +23,8 @@ std::tuple<Coordinates<unsigned int>, Rect<float>, int, int> ParseCmdLine(int ar
 	TCLAP::ValueArg<unsigned int> iterationsArg("i", "maxIt", "Maxmimal number of iterations", true, 0, "int");
 
 	TCLAP::ValueArg<unsigned int> runsArg("r", "runs", "Number of runs", false, 1, "int");
+
+	TCLAP::SwitchArg parallelArg("s", "single", "If specified, the generato will be run in single thread mode", cmd, true);
 
 	cmd.add(wArg);
 	cmd.add(hArg);
@@ -48,5 +50,5 @@ std::tuple<Coordinates<unsigned int>, Rect<float>, int, int> ParseCmdLine(int ar
 		{maxXArg.getValue(), maxYArg.getValue()},
 	};
 
-	return std::make_tuple(p, r, iterationsArg.getValue(), runsArg.getValue());
+	return std::make_tuple(p, r, iterationsArg.getValue(), runsArg.getValue(), parallelArg.getValue());
 }

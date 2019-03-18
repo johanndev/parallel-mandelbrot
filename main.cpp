@@ -17,23 +17,32 @@ int main(int argc, char* argv[]) {
 	try
 	{
 		spdlog::info("Welcome to parallel mandelbrot!");
-		auto [pictureCoordinates, viewport, iterations, nrOfRuns] = ParseCmdLine(argc, argv);
+		auto [pictureCoordinates, viewport, iterations, nrOfRuns, runInParallel] = ParseCmdLine(argc, argv);
 
 		spdlog::info("Picture size: width = {}, height = {}", pictureCoordinates.X, pictureCoordinates.Y);
 		spdlog::info("Viewport: minX = {}, minY = {}, maxX = {}, maxY = {}", viewport.first.X, viewport.first.Y, viewport.second.X, viewport.second.Y);
 		spdlog::info("Maximal number of iterations: {}", iterations);
 
+		if (runInParallel)
+		{
+			spdlog::info("Generator will have no restrictions on the number of threads.");
+		}
+		else
+		{
+			spdlog::info("Generator will be forced to run with on only one thread.");
+		}
+
 		spdlog::info("Generator will be run {} times", nrOfRuns);
 
 		std::vector<long long> runtimes;
 		spdlog::info("Starting calculation...");
-		std::unique_ptr<sf::VertexArray> vertexArray;
+		sf::VertexArray vertexArray;
 
 		for (size_t r = 1; r <= nrOfRuns; r++)
 		{
 			auto startTime = std::chrono::high_resolution_clock::now();
 
-			vertexArray = GenerateMandelbrotSet(pictureCoordinates, viewport, iterations);
+			vertexArray = GenerateMandelbrotSet(pictureCoordinates, viewport, iterations, runInParallel);
 
 			auto endTime = std::chrono::high_resolution_clock::now();
 			auto totalRuntime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
@@ -45,6 +54,7 @@ int main(int argc, char* argv[]) {
 		spdlog::info("");
 		auto meanRuntime = std::accumulate(runtimes.begin(), runtimes.end(), 0) / static_cast<float>(nrOfRuns);
 		spdlog::info("Calculation complete, mean runtime over {} runs was {} milliseconds", nrOfRuns, meanRuntime);
+		spdlog::info("Rendering output...");
 
 		sf::RenderWindow window(sf::VideoMode(pictureCoordinates.X, pictureCoordinates.Y), "Parallel Mandelbrot - Johann Wimmer", sf::Style::Titlebar | sf::Style::Close);
 
@@ -60,12 +70,11 @@ int main(int argc, char* argv[]) {
 					window.close();
 			}
 			// draw the vertex array to the screen
-			window.draw(*vertexArray);
+			window.draw(vertexArray);
 
 			// end the current frame
 			window.display();
 		}
-
 	}
 	catch (TCLAP::ArgException & e)
 	{

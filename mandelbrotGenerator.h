@@ -14,10 +14,11 @@ double scale(int p, double p0, double p1, int range) {
 	return p0 + p * (p1 - p0) / range;
 }
 
-static std::unique_ptr<sf::VertexArray> GenerateMandelbrotSet(
+static sf::VertexArray GenerateMandelbrotSet(
 	const Coordinates<unsigned int> pictureCoordinates,
 	const Rect<float> viewport,
-	const unsigned int maxIterations)
+	const unsigned int maxIterations,
+	const bool runWithOmp = true)
 {
 	unsigned int i;
 	unsigned int x;
@@ -29,9 +30,13 @@ static std::unique_ptr<sf::VertexArray> GenerateMandelbrotSet(
 	double zi;
 
 	sf::Vertex vertex;
-	auto vertexArray = std::make_unique<sf::VertexArray>(sf::Points, pictureCoordinates.X * pictureCoordinates.Y);
+	auto vertexArray = sf::VertexArray(sf::Points, pictureCoordinates.X * pictureCoordinates.Y);
 	auto colorTable = ColorTable(maxIterations);
 
+	if (!runWithOmp)
+	{
+		omp_set_num_threads(1);
+	}
 #pragma omp parallel \
   shared (maxIterations, pictureCoordinates, viewport, colorTable, vertexArray) \
   private (x, y, i, nextzr, nextzi, zr, zi, vertex) 
@@ -64,7 +69,7 @@ static std::unique_ptr<sf::VertexArray> GenerateMandelbrotSet(
 				vertex.color = colorTable.at(color);
 #pragma omp critical
 				{
-					vertexArray->append(vertex);
+					vertexArray.append(vertex);
 				}
 			}
 		}
