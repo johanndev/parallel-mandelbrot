@@ -1,69 +1,50 @@
 #include <tuple>
 #include <map>
 #include <memory>
+#include <chrono>
+#include <iostream>
+#include <numeric>
 
-#include <tclap/CmdLine.h>
 #include <spdlog/spdlog.h>
 
+#include "parseCmdLine.h"
 #include "rectangle.h"
 #include "coordinates.h"
 #include "colortable.h"
 #include "mandelbrotGenerator.h"
 
-std::tuple<Coordinates<unsigned int>, Rect<float>, int> ParseCmdLine(int argc, char** argv)
-{
-	TCLAP::CmdLine cmd("Parallel mandelbrot implementation by Johann Wimmer", ' ', "0.1", false);
-
-	// Parse target picture size
-	TCLAP::ValueArg<unsigned int> wArg("w", "width", "Width of the target picture", true, 0, "int");
-	TCLAP::ValueArg<unsigned int> hArg("h", "height", "Height of the target picture", true, 0, "int");
-
-	// Parse viewport rectangle arguments
-	TCLAP::ValueArg<float> minXArg("a", "minx", "Minimal x coordinate of viewport", true, 0.0f, "float");
-	TCLAP::ValueArg<float> minYArg("b", "miny", "Minimal y coordinate of viewport", true, 0.0f, "float");
-	TCLAP::ValueArg<float> maxXArg("c", "maxx", "Maxmimal x coordinate of viewport", true, 0.0f, "float");
-	TCLAP::ValueArg<float> maxYArg("d", "maxy", "Maxmimal y coordinate of viewport", true, 0.0f, "float");
-
-	TCLAP::ValueArg<int> iterationsArg("i", "maxIt", "Maxmimal number of iterations", true, 0, "int");
-
-	cmd.add(wArg);
-	cmd.add(hArg);
-
-	cmd.add(minXArg);
-	cmd.add(minYArg);
-	cmd.add(maxXArg);
-	cmd.add(maxYArg);
-
-	cmd.add(iterationsArg);
-
-	cmd.parse(argc, argv);
-
-	Coordinates<unsigned int> p = {
-		wArg.getValue(),
-		hArg.getValue()
-	};
-
-	Rect<float> r = {
-		{minXArg.getValue(), minYArg.getValue()},
-		{maxXArg.getValue(), maxYArg.getValue()},
-	};
-
-	return std::make_tuple(p, r, iterationsArg.getValue());
-}
-
 int main(int argc, char* argv[]) {
 	try
 	{
 		spdlog::info("Welcome to parallel mandelbrot!");
-		auto [pictureCoordinates, viewport, iterations] = ParseCmdLine(argc, argv);
+		auto [pictureCoordinates, viewport, iterations, nrOfRuns] = ParseCmdLine(argc, argv);
 
 		spdlog::info("Picture size: width = {}, height = {}", pictureCoordinates.X, pictureCoordinates.Y);
 		spdlog::info("Viewport: minX = {}, minY = {}, maxX = {}, maxY = {}", viewport.first.X, viewport.first.Y, viewport.second.X, viewport.second.Y);
 		spdlog::info("Maximal number of iterations: {}", iterations);
 
-		auto vertexArray = GenerateMandelbrotSet(pictureCoordinates, viewport, iterations);
+		spdlog::info("Generator will be run {} times", nrOfRuns);
 
-		spdlog::info("Calculation complete!");
+		std::vector<long long> runtimes;
+		spdlog::info("Starting calculation...");
+		std::unique_ptr<sf::VertexArray> vertexArray;
+
+		for (size_t r = 1; r <= nrOfRuns; r++)
+		{
+			auto startTime = std::chrono::high_resolution_clock::now();
+
+			vertexArray = GenerateMandelbrotSet(pictureCoordinates, viewport, iterations);
+
+			auto endTime = std::chrono::high_resolution_clock::now();
+			auto totalRuntime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+			runtimes.push_back(totalRuntime);
+
+			spdlog::info("Run {} took {} milliseconds.", r, totalRuntime);
+		}
+
+		spdlog::info("");
+		auto meanRuntime = std::accumulate(runtimes.begin(), runtimes.end(), 0) / static_cast<float>(nrOfRuns);
+		spdlog::info("Calculation complete, mean runtime over {} runs was {} milliseconds", nrOfRuns, meanRuntime);
 
 		sf::RenderWindow window(sf::VideoMode(pictureCoordinates.X, pictureCoordinates.Y), "Parallel Mandelbrot - Johann Wimmer", sf::Style::Titlebar | sf::Style::Close);
 
