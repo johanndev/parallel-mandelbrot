@@ -6,8 +6,3 @@ struct Coordinates {
 	T Y;
 };
 
-//template <typename T>
-//struct Dimensions {
-//	const T Width;
-//	const T Height;
-//};

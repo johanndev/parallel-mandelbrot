@@ -1,9 +1,56 @@
 #pragma once
 #include <map>
-#include <nana/paint/graphics.hpp>
+#include <SFML/Graphics.hpp>
+
+#include "hsl.h"
+#include "rgb.h"
+
+static float HueToRGB(float v1, float v2, float vH) {
+	if (vH < 0)
+		vH += 1;
+
+	if (vH > 1)
+		vH -= 1;
+
+	if ((6 * vH) < 1)
+		return (v1 + (v2 - v1) * 6 * vH);
+
+	if ((2 * vH) < 1)
+		return v2;
+
+	if ((3 * vH) < 2)
+		return (v1 + (v2 - v1) * ((2.0f / 3) - vH) * 6);
+
+	return v1;
+}
+
+static RGBColor HSLToRGB(HSLColor hsl) {
+	unsigned char r = 0;
+	unsigned char g = 0;
+	unsigned char b = 0;
+
+	if (hsl.S == 0)
+	{
+		r = g = b = (unsigned char)(hsl.L * 255);
+	}
+	else
+	{
+		float v1, v2;
+		float hue = (float)hsl.H / 360;
+
+		v2 = (hsl.L < 0.5) ? (hsl.L * (1 + hsl.S)) : ((hsl.L + hsl.S) - (hsl.L * hsl.S));
+		v1 = 2 * hsl.L - v2;
+
+		r = (unsigned char)(255 * HueToRGB(v1, v2, hue + (1.0f / 3)));
+		g = (unsigned char)(255 * HueToRGB(v1, v2, hue));
+		b = (unsigned char)(255 * HueToRGB(v1, v2, hue - (1.0f / 3)));
+	}
+
+	return RGBColor(r, g, b);
+}
 
 class ColorTable {
-	using colormap_t = std::map<int, nana::color>;
+	using colormap_t = std::map<int, sf::Color>;
 	colormap_t colormap;
 public:
 	using iterator = colormap_t::iterator;
@@ -13,8 +60,9 @@ public:
 	{
 		for (size_t i = 0; i < size; i++)
 		{
-			double hue = 240 / size * static_cast<double>(i);
-			colormap[i] = nana::color().from_hsl(hue, 1.0, 0.5);
+			auto hsl = HSLColor(240 / size * static_cast<double>(i), 1.0, 0.5);
+			auto rgb = HSLToRGB(hsl);
+			colormap[i] = sf::Color(rgb.R, rgb.G, rgb.B);
 		}
 	}
 
@@ -25,8 +73,7 @@ public:
 	const_iterator cbegin() const { return colormap.cbegin(); }
 	const_iterator cend() const { return colormap.cend(); }
 
-	nana::color at(const int& _KeyVal) const {
+	sf::Color at(const int& _KeyVal) const {
 		return colormap.at(_KeyVal);
 	}
 };
-

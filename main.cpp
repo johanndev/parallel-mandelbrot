@@ -4,7 +4,7 @@
 
 #include <tclap/CmdLine.h>
 #include "spdlog/spdlog.h"
-#include <nana/gui.hpp>
+#include <SFML/Graphics.hpp>
 
 #include "rectangle.h"
 #include "coordinates.h"
@@ -67,9 +67,9 @@ int main(int argc, char* argv[]) {
 		spdlog::info("Maximal number of iterations: {}", iterations);
 
 		// Generate color table based on the number of iterations
-		ColorTable ct (iterations);
+		ColorTable ct(iterations);
 		int i;
-		std::vector<std::tuple<int, int, nana::color>> bitmap;
+		std::vector<std::tuple<int, int, sf::Color>> bitmap;
 
 		for (int x = 0; x < pictureCoordinates.X; x++)
 		{
@@ -97,30 +97,50 @@ int main(int argc, char* argv[]) {
 				if (i == iterations) {
 					i -= 1;
 				}
- 				bitmap.emplace_back(std::make_tuple(x, y, ct.at(i)));
+				bitmap.emplace_back(std::make_tuple(x, y, ct.at(i)));
 			}
 		}
 
-		using namespace nana;
+		// create a render-texture
+		sf::RenderTexture renderTexture;
+		if (!renderTexture.create(pictureCoordinates.X, pictureCoordinates.Y))
+		{
+			// error...
+		}
 
-		form fm(API::make_center(pictureCoordinates.X, pictureCoordinates.Y),
-			form::appear::decorate<
-				form::appear::taskbar
-			>());
-		fm.caption(L"Parallel Mandelbrot - Johann Wimmer");
+		//renderTexture.clear();
 
-		//form fm{ API::make_center(pictureCoordinates.X, pictureCoordinates.Y) };
-		drawing dw(fm);
+		for (auto [posX, posY, c] : bitmap) {
+			sf::RectangleShape px(sf::Vector2f(1.0f, 1.0f));
+			px.setPosition(sf::Vector2f(posX, posY));
+			px.setFillColor(c);
+			renderTexture.draw(px); 
+		}
+		renderTexture.display();
 
-		dw.draw([&ct, &bitmap](paint::graphics & graph) {
-			for (auto [posX, posY, c] : bitmap) {
-				graph.rectangle(rectangle{ posX, posY, 10, 10 }, true, c);
+		// get the target texture (where the stuff has been drawn)
+		const sf::Texture& texture = renderTexture.getTexture();
+
+		sf::RenderWindow window(sf::VideoMode(pictureCoordinates.X, pictureCoordinates.Y), "Parallel Mandelbrot - Johann Wimmer");
+
+		// run the program as long as the window is open
+		while (window.isOpen())
+		{
+			// check all the window's events that were triggered since the last iteration of the loop
+			sf::Event event;
+			while (window.pollEvent(event))
+			{
+				// "close requested" event: we close the window
+				if (event.type == sf::Event::Closed)
+					window.close();
 			}
-		});
 
-		dw.update();
-		fm.show();
-		::nana::exec();
+			sf::Sprite sprite(texture);
+			window.draw(sprite);
+
+			// end the current frame
+			window.display();
+		}
 
 	}
 	catch (TCLAP::ArgException & e)

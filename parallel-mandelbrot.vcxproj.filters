@@ -29,5 +29,11 @@
     <ClInclude Include="colortable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="hsl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rgb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
