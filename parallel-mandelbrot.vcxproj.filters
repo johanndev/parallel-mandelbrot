@@ -35,5 +35,8 @@
     <ClInclude Include="rgb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="mandelbrotGenerator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

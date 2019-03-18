@@ -4,12 +4,11 @@
 
 #include <tclap/CmdLine.h>
 #include <spdlog/spdlog.h>
-#include <SFML/Graphics.hpp>
-#include <omp.h>
 
 #include "rectangle.h"
 #include "coordinates.h"
 #include "colortable.h"
+#include "mandelbrotRunner.h"
 
 std::tuple<Coordinates<int>, Rect<float>, int> ParseCmdLine(int argc, char** argv)
 {
@@ -52,11 +51,6 @@ std::tuple<Coordinates<int>, Rect<float>, int> ParseCmdLine(int argc, char** arg
 	return std::make_tuple(p, r, iterationsArg.getValue());
 }
 
-// Scales the current coordinate to the output canvas
-double scale(int p, double p0, double p1, int range) {
-	return p0 + p * (p1 - p0) / range;
-}
-
 int main(int argc, char* argv[]) {
 	try
 	{
@@ -67,65 +61,7 @@ int main(int argc, char* argv[]) {
 		spdlog::info("Viewport: minX = {}, minY = {}, maxX = {}, maxY = {}", viewport.first.X, viewport.first.Y, viewport.second.X, viewport.second.Y);
 		spdlog::info("Maximal number of iterations: {}", iterations);
 
-		// Generate color table based on the number of iterations
-		ColorTable colorTable(iterations);
-
-		int i;
-		int x;
-		int y;
-		double nextzr;
-		double nextzi;
-
-		double zr;
-		double zi;
-
-		sf::Vertex vertex;
-		sf::VertexArray vertexArray(sf::Points, pictureCoordinates.X * pictureCoordinates.Y);
-
-		spdlog::info("Starting calculation...");
-
-#pragma omp parallel \
-  shared (iterations, pictureCoordinates, viewport, colorTable, vertexArray) \
-  private (x, y, i, nextzr, nextzi, zr, zi, vertex) 
-		{
-#pragma omp for collapse(2)
-			for (x = 0; x < pictureCoordinates.X; x++)
-			{
-				for (y = 0; y < pictureCoordinates.Y; y++)
-				{
-					//int x = index % pictureCoordinates.X;
-					//int y = index / pictureCoordinates.X;
-					zr = 0.;
-					zi = 0.;
-
-					for (i = 0; i < iterations; i++) {
-
-						// calculate next iteration
-						nextzr = zr * zr - zi * zi + scale(x, viewport.first.X, viewport.second.X, pictureCoordinates.X);
-						nextzi = 2 * zr * zi + scale(y, viewport.first.Y, viewport.second.Y, pictureCoordinates.Y);
-
-						// are we done?
-						if ((nextzr * nextzr + nextzi * nextzi) > 4) {
-							break;
-						}
-
-						zr = nextzr;
-						zi = nextzi;
-					}
-
-					// Set the pixel at the current position
-					if (i == iterations) {
-						i -= 1;
-					}
-					vertex.position = sf::Vector2f(x, y);
-					vertex.color = colorTable.at(i);
-#pragma omp critical
-					{
-						vertexArray.append(vertex);
-					}
-				}
-			}
-		}
+		auto vertexArray = GenerateMandelbrotSet(pictureCoordinates, viewport, iterations);
 
 		spdlog::info("Calculation complete!");
 
@@ -143,7 +79,7 @@ int main(int argc, char* argv[]) {
 					window.close();
 			}
 			// draw the vertex array to the screen
-			window.draw(vertexArray);
+			window.draw(*vertexArray);
 
 			// end the current frame
 			window.display();
