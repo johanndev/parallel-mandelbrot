@@ -1,5 +1,6 @@
 #include <tuple>
 #include <map>
+#include <memory>
 
 #include <tclap/CmdLine.h>
 #include "spdlog/spdlog.h"
@@ -50,35 +51,9 @@ std::tuple<Coordinates<int>, Rect<float>, int> ParseCmdLine(int argc, char** arg
 	return std::make_tuple(p, r, iterationsArg.getValue());
 }
 
-std::tuple<float, float> normalizeToViewRectangle(float pX, float pY, float minX, float minY, float maxX, float maxY) {
-	return std::make_tuple(0.2f, 0.2f);
-}
-
-float calc_pix(float pX, float pY) {
-	int minX = -2;
-	int minY = -1;
-	int maxX = 1;
-	int maxY = 1;
-	auto [cX, cY] = normalizeToViewRectangle(pX, pY, minX, minY, maxX, maxY);
-
-//calcPix(px, py) {
-//	cx, cy = normalizeToViewRectangle(px, py, minx, miny, maxx, maxy)
-//		zx = cx;
-//	zy = cy;
-//	for (n = 0; n < maxIterations; n++) {
-//		float x = (zx * zx - zy * zy) + cx;
-//		float y = (zy * zx + zx * zy) + cy;
-//		if ((x * x + y * y) > 4) {
-//			// diverge , produce nice color
-//			paint pixel px, py in a color depending on n
-//				return;
-//		}
-//		zx = x;
-//		zy = y;
-//	}
-//	paint pixel px, py black // in the set
-//}
-	return 0.0f;
+// Scales the current coordinate to the output canvas
+double scale(int p, double p0, double p1, int range) {
+	return p0 + p * (p1 - p0) / range;
 }
 
 int main(int argc, char* argv[]) {
@@ -92,21 +67,54 @@ int main(int argc, char* argv[]) {
 		spdlog::info("Maximal number of iterations: {}", iterations);
 
 		// Generate color table based on the number of iterations
-		ColorTable ct(iterations);
+		ColorTable ct (iterations);
+		int i;
+		std::vector<std::tuple<int, int, nana::color>> bitmap;
+
+		for (int x = 0; x < pictureCoordinates.X; x++)
+		{
+			for (int y = 0; y < pictureCoordinates.Y; y++)
+			{
+				double zr = 0.;
+				double zi = 0.;
+
+				for (i = 0; i < iterations; i++) {
+
+					// calculate next iteration
+					double nextzr = zr * zr - zi * zi + scale(x, viewport.first.X, viewport.second.X, pictureCoordinates.X);
+					double nextzi = 2 * zr * zi + scale(y, viewport.first.Y, viewport.second.Y, pictureCoordinates.Y);
+
+					// are we done?
+					if ((nextzr * nextzr + nextzi * nextzi) > 4) {
+						break;
+					}
+
+					zr = nextzr;
+					zi = nextzi;
+				}
+
+				// Set the pixel at the current position
+				if (i == iterations) {
+					i -= 1;
+				}
+ 				bitmap.emplace_back(std::make_tuple(x, y, ct.at(i)));
+			}
+		}
 
 		using namespace nana;
 
-		form fm{ API::make_center(pictureCoordinates.X, pictureCoordinates.Y) };
+		form fm(API::make_center(pictureCoordinates.X, pictureCoordinates.Y),
+			form::appear::decorate<
+				form::appear::taskbar
+			>());
+		fm.caption(L"Parallel Mandelbrot - Johann Wimmer");
+
+		//form fm{ API::make_center(pictureCoordinates.X, pictureCoordinates.Y) };
 		drawing dw(fm);
 
-		dw.draw([&ct, iterations](paint::graphics & graph) {
-			auto posX = 10;
-			auto posY = 10;
-			for (auto [pos, c] : ct)
-			{
+		dw.draw([&ct, &bitmap](paint::graphics & graph) {
+			for (auto [posX, posY, c] : bitmap) {
 				graph.rectangle(rectangle{ posX, posY, 10, 10 }, true, c);
-				posX += 10;
-				posY += 10;
 			}
 		});
 

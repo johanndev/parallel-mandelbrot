@@ -13,10 +13,6 @@ public:
 	{
 		for (size_t i = 0; i < size; i++)
 		{
-			/// Sets color with a HSL value.
-			/// @param hue in range of [0, 360]
-			/// @param saturation in range of [0, 1]
-			/// @param lightness  in range of [0, 1]
 			double hue = 240 / size * static_cast<double>(i);
 			colormap[i] = nana::color().from_hsl(hue, 1.0, 0.5);
 		}
@@ -29,6 +25,8 @@ public:
 	const_iterator cbegin() const { return colormap.cbegin(); }
 	const_iterator cend() const { return colormap.cend(); }
 
-	nana::color at(const int& _KeyVal) const { return colormap.at(_KeyVal); }
+	nana::color at(const int& _KeyVal) const {
+		return colormap.at(_KeyVal);
+	}
 };
 
