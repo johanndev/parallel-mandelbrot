@@ -3,8 +3,9 @@
 #include <memory>
 
 #include <tclap/CmdLine.h>
-#include "spdlog/spdlog.h"
+#include <spdlog/spdlog.h>
 #include <SFML/Graphics.hpp>
+#include <omp.h>
 
 #include "rectangle.h"
 #include "coordinates.h"
@@ -67,22 +68,37 @@ int main(int argc, char* argv[]) {
 		spdlog::info("Maximal number of iterations: {}", iterations);
 
 		// Generate color table based on the number of iterations
-		ColorTable ct(iterations);
+		ColorTable colorTable(iterations);
 		int i;
-		std::vector<std::tuple<int, int, sf::Color>> bitmap;
+		int index;
+		double nextzr;
+		double nextzi;
 
-		for (int x = 0; x < pictureCoordinates.X; x++)
+		double zr;
+		double zi;
+
+		sf::Vertex vertex;
+		sf::VertexArray vertexArray(sf::Points, pictureCoordinates.X * pictureCoordinates.Y);
+
+		spdlog::info("Starting calculation...");
+
+#pragma omp parallel \
+  shared (iterations, pictureCoordinates, viewport, colorTable, vertexArray) \
+  private (index, i, nextzr, nextzi, zr, zi, vertex)
 		{
-			for (int y = 0; y < pictureCoordinates.Y; y++)
+#pragma omp for
+			for (index = 0; index < pictureCoordinates.X * pictureCoordinates.Y; index++)
 			{
-				double zr = 0.;
-				double zi = 0.;
+				int x = index % pictureCoordinates.X;
+				int y = index / pictureCoordinates.X;
+				zr = 0.;
+				zi = 0.;
 
 				for (i = 0; i < iterations; i++) {
 
 					// calculate next iteration
-					double nextzr = zr * zr - zi * zi + scale(x, viewport.first.X, viewport.second.X, pictureCoordinates.X);
-					double nextzi = 2 * zr * zi + scale(y, viewport.first.Y, viewport.second.Y, pictureCoordinates.Y);
+					nextzr = zr * zr - zi * zi + scale(x, viewport.first.X, viewport.second.X, pictureCoordinates.X);
+					nextzi = 2 * zr * zi + scale(y, viewport.first.Y, viewport.second.Y, pictureCoordinates.Y);
 
 					// are we done?
 					if ((nextzr * nextzr + nextzi * nextzi) > 4) {
@@ -97,31 +113,18 @@ int main(int argc, char* argv[]) {
 				if (i == iterations) {
 					i -= 1;
 				}
-				bitmap.emplace_back(std::make_tuple(x, y, ct.at(i)));
+				vertex.position = sf::Vector2f(x, y);
+				vertex.color = colorTable.at(i);
+#pragma omp critical
+				{
+					vertexArray.append(vertex);
+				}
 			}
 		}
 
-		// create a render-texture
-		sf::RenderTexture renderTexture;
-		if (!renderTexture.create(pictureCoordinates.X, pictureCoordinates.Y))
-		{
-			// error...
-		}
+		spdlog::info("Calculation complete!");
 
-		//renderTexture.clear();
-
-		for (auto [posX, posY, c] : bitmap) {
-			sf::RectangleShape px(sf::Vector2f(1.0f, 1.0f));
-			px.setPosition(sf::Vector2f(posX, posY));
-			px.setFillColor(c);
-			renderTexture.draw(px); 
-		}
-		renderTexture.display();
-
-		// get the target texture (where the stuff has been drawn)
-		const sf::Texture& texture = renderTexture.getTexture();
-
-		sf::RenderWindow window(sf::VideoMode(pictureCoordinates.X, pictureCoordinates.Y), "Parallel Mandelbrot - Johann Wimmer");
+		sf::RenderWindow window(sf::VideoMode(pictureCoordinates.X, pictureCoordinates.Y), "Parallel Mandelbrot - Johann Wimmer", sf::Style::Titlebar | sf::Style::Close);
 
 		// run the program as long as the window is open
 		while (window.isOpen())
@@ -134,9 +137,8 @@ int main(int argc, char* argv[]) {
 				if (event.type == sf::Event::Closed)
 					window.close();
 			}
-
-			sf::Sprite sprite(texture);
-			window.draw(sprite);
+			// draw the vertex array to the screen
+			window.draw(vertexArray);
 
 			// end the current frame
 			window.display();
