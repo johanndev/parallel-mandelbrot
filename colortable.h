@@ -60,7 +60,8 @@ public:
 	{
 		for (size_t i = 0; i < size; i++)
 		{
-			auto hsl = HSLColor(240 / static_cast<double>(size) * static_cast<double>(i), 1.0, 0.5);
+			auto hsl = HSLColor(240.0f / size * i, 1.0, 0.5);
+
 			auto rgb = HSLToRGB(hsl);
 			colormap[i] = sf::Color(rgb.R, rgb.G, rgb.B);
 		}

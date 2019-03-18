@@ -8,15 +8,15 @@
 #include "rectangle.h"
 #include "coordinates.h"
 #include "colortable.h"
-#include "mandelbrotRunner.h"
+#include "mandelbrotGenerator.h"
 
-std::tuple<Coordinates<int>, Rect<float>, int> ParseCmdLine(int argc, char** argv)
+std::tuple<Coordinates<unsigned int>, Rect<float>, int> ParseCmdLine(int argc, char** argv)
 {
 	TCLAP::CmdLine cmd("Parallel mandelbrot implementation by Johann Wimmer", ' ', "0.1", false);
 
 	// Parse target picture size
-	TCLAP::ValueArg<int> wArg("w", "width", "Width of the target picture", true, 0, "int");
-	TCLAP::ValueArg<int> hArg("h", "height", "Height of the target picture", true, 0, "int");
+	TCLAP::ValueArg<unsigned int> wArg("w", "width", "Width of the target picture", true, 0, "int");
+	TCLAP::ValueArg<unsigned int> hArg("h", "height", "Height of the target picture", true, 0, "int");
 
 	// Parse viewport rectangle arguments
 	TCLAP::ValueArg<float> minXArg("a", "minx", "Minimal x coordinate of viewport", true, 0.0f, "float");
@@ -38,7 +38,7 @@ std::tuple<Coordinates<int>, Rect<float>, int> ParseCmdLine(int argc, char** arg
 
 	cmd.parse(argc, argv);
 
-	Coordinates<int> p = {
+	Coordinates<unsigned int> p = {
 		wArg.getValue(),
 		hArg.getValue()
 	};

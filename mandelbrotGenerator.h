@@ -15,13 +15,13 @@ double scale(int p, double p0, double p1, int range) {
 }
 
 static std::unique_ptr<sf::VertexArray> GenerateMandelbrotSet(
-	Coordinates<int> pictureCoordinates,
-	Rect<float> viewport,
-	unsigned int maxIterations)
+	const Coordinates<unsigned int> pictureCoordinates,
+	const Rect<float> viewport,
+	const unsigned int maxIterations)
 {
-	int i;
-	int x;
-	int y;
+	unsigned int i;
+	unsigned int x;
+	unsigned int y;
 	double nextzr;
 	double nextzi;
 
@@ -36,7 +36,7 @@ static std::unique_ptr<sf::VertexArray> GenerateMandelbrotSet(
   shared (maxIterations, pictureCoordinates, viewport, colorTable, vertexArray) \
   private (x, y, i, nextzr, nextzi, zr, zi, vertex) 
 	{
-#pragma omp for collapse(2)
+#pragma omp for
 		for (x = 0; x < pictureCoordinates.X; x++)
 		{
 			for (y = 0; y < pictureCoordinates.Y; y++)
