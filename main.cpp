@@ -69,8 +69,10 @@ int main(int argc, char* argv[]) {
 
 		// Generate color table based on the number of iterations
 		ColorTable colorTable(iterations);
+
 		int i;
-		int index;
+		int x;
+		int y;
 		double nextzr;
 		double nextzi;
 
@@ -84,40 +86,43 @@ int main(int argc, char* argv[]) {
 
 #pragma omp parallel \
   shared (iterations, pictureCoordinates, viewport, colorTable, vertexArray) \
-  private (index, i, nextzr, nextzi, zr, zi, vertex)
+  private (x, y, i, nextzr, nextzi, zr, zi, vertex) 
 		{
-#pragma omp for
-			for (index = 0; index < pictureCoordinates.X * pictureCoordinates.Y; index++)
+#pragma omp for collapse(2)
+			for (x = 0; x < pictureCoordinates.X; x++)
 			{
-				int x = index % pictureCoordinates.X;
-				int y = index / pictureCoordinates.X;
-				zr = 0.;
-				zi = 0.;
+				for (y = 0; y < pictureCoordinates.Y; y++)
+				{
+					//int x = index % pictureCoordinates.X;
+					//int y = index / pictureCoordinates.X;
+					zr = 0.;
+					zi = 0.;
 
-				for (i = 0; i < iterations; i++) {
+					for (i = 0; i < iterations; i++) {
 
-					// calculate next iteration
-					nextzr = zr * zr - zi * zi + scale(x, viewport.first.X, viewport.second.X, pictureCoordinates.X);
-					nextzi = 2 * zr * zi + scale(y, viewport.first.Y, viewport.second.Y, pictureCoordinates.Y);
+						// calculate next iteration
+						nextzr = zr * zr - zi * zi + scale(x, viewport.first.X, viewport.second.X, pictureCoordinates.X);
+						nextzi = 2 * zr * zi + scale(y, viewport.first.Y, viewport.second.Y, pictureCoordinates.Y);
 
-					// are we done?
-					if ((nextzr * nextzr + nextzi * nextzi) > 4) {
-						break;
+						// are we done?
+						if ((nextzr * nextzr + nextzi * nextzi) > 4) {
+							break;
+						}
+
+						zr = nextzr;
+						zi = nextzi;
 					}
 
-					zr = nextzr;
-					zi = nextzi;
-				}
-
-				// Set the pixel at the current position
-				if (i == iterations) {
-					i -= 1;
-				}
-				vertex.position = sf::Vector2f(x, y);
-				vertex.color = colorTable.at(i);
+					// Set the pixel at the current position
+					if (i == iterations) {
+						i -= 1;
+					}
+					vertex.position = sf::Vector2f(x, y);
+					vertex.color = colorTable.at(i);
 #pragma omp critical
-				{
-					vertexArray.append(vertex);
+					{
+						vertexArray.append(vertex);
+					}
 				}
 			}
 		}
